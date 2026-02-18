@@ -1,0 +1,44 @@
+name: Daily Bilkent Menu
+
+on:
+  schedule:
+    # Run every hour (to check for /start commands)
+    # But menu sends ONLY at 07:00 UTC (10:00 TRT)
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  send-menu:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Cloud Bot
+      env:
+        TWILIO_SID: ${{ secrets.TWILIO_SID }}
+        TWILIO_TOKEN: ${{ secrets.TWILIO_TOKEN }}
+        TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
+        MY_NUMBER: ${{ secrets.MY_NUMBER }}
+        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+      run: python cloud_bot.py
+
+    - name: Commit and Push Subscribers
+      run: |
+        git config --global user.name 'Yemekhane Bot'
+        git config --global user.email 'bot@actions.github.com'
+        git add subscribers.json
+        # Only commit if there are changes
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update subscribers list [skip ci]" && git push)
